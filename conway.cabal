@@ -1,0 +1,31 @@
+cabal-version:       >=1.10
+
+name:                conway
+version:             0.1.0.0
+license:             MIT
+license-file:        LICENSE
+author:              Lúcás Meier
+maintainer:          cronokirby@gmail.com
+build-type:          Simple
+extra-source-files:  README.md
+
+library
+  hs-source-dirs:      src
+  exposed-modules:     Prelude
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+  default-extensions:  OverloadedStrings
+                     , NoImplicitPrelude
+  build-depends:       base-noprelude >=4.13 && <4.14
+                     , relude >=0.6.0.0 && <0.7.0.0
+
+executable conway
+  main-is:             Main.hs
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
+  default-extensions:  OverloadedStrings, NoImplicitPrelude
+  build-depends:       base-noprelude >=4.13 && <4.14
+                     , conway 
+                     , relude >=0.6.0.0 && <0.7.0.0
+  default-language:    Haskell2010
+  default-extensions:  OverloadedStrings
+                     , NoImplicitPrelude
