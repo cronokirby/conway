@@ -12,12 +12,14 @@ extra-source-files:  README.md
 library
   hs-source-dirs:      src
   exposed-modules:     Prelude
+                     , Life
   default-language:    Haskell2010
   ghc-options:         -Wall
   default-extensions:  OverloadedStrings
                      , NoImplicitPrelude
   build-depends:       base-noprelude >=4.13 && <4.14
                      , relude >=0.6.0.0 && <0.7.0.0
+                     , unordered-containers >=0.2.0.0 && <0.3.0.0
 
 executable conway
   main-is:             Main.hs
