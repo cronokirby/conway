@@ -3,6 +3,8 @@
 This is a straightforward implementation of [Conway's Game of Life](https://www.wikiwand.com/en/Conway%27s_Game_of_Life), as
 a graphical application, using SDL2 and Haskell.
 
+![](conway.png)
+
 # Controls
 
 | Key     | Effect                |
