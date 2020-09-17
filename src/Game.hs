@@ -29,22 +29,22 @@ startGame = do
 
 -- An action that the user can take
 data Action
-  -- The user wants to exit the game
-  = EscapeAction
-  -- The user wants to pause the game
-  | PauseAction
-  -- The user wants to increase the speed of the game
-  | AccelAction
-  -- The user wants to decrease the speed of the game
-  | DecelAction
-  -- The user wants to advance the game forward by a single "turn"
-  | StepAction
-  -- The user is hovering over a specific cell
-  | HoverAction Pos
-  -- The user has clicked on a cell
-  | ClickAction Pos
-  -- This is the action we return when we have an event we don't recognize
-  | NoAction
+  = -- The user wants to exit the game
+    EscapeAction
+  | -- The user wants to pause the game
+    PauseAction
+  | -- The user wants to increase the speed of the game
+    AccelAction
+  | -- The user wants to decrease the speed of the game
+    DecelAction
+  | -- The user wants to advance the game forward by a single "turn"
+    StepAction
+  | -- The user is hovering over a specific cell
+    HoverAction Pos
+  | -- The user has clicked on a cell
+    ClickAction Pos
+  | -- This is the action we return when we have an event we don't recognize
+    NoAction
 
 eventToAction :: Event -> Action
 eventToAction event = case eventPayload event of
