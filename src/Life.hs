@@ -1,4 +1,4 @@
-module Life (Pos, Grid, Life(..), positions, conway, emptyLife, singleLife) where
+module Life (Pos, Grid, Life (..), positions, conway, emptyLife, singleLife) where
 
 import qualified Data.HashMap.Strict as HM
 import Prelude
@@ -30,14 +30,13 @@ positions (Grid w h a mp) =
 neighbors :: Pos -> Grid a -> [a]
 neighbors (x, y) (Grid _ _ a mp) =
   let shifts = [-1, 0, 1]
-      shifted = filter (/= (x, y)) [(x + dx, x + dy) | dx <- shifts, dy <- shifts]
+      shifted = filter (/= (x, y)) [(x + dx, y + dy) | dx <- shifts, dy <- shifts]
    in map (\i -> HM.lookupDefault a i mp) shifted
 
 -- Evolve a single step of the automaton given the current state of the grid, and a way of evaluating neighbors
 evolve :: Eq a => ([a] -> a -> a) -> Grid a -> Grid a
 evolve f grid@(Grid w h a _) =
   let contents = map (\(i, x) -> (i, f (neighbors i grid) x)) (positions grid)
-      -- For efficiency, don't store dead cells
       filtered = filter ((/= a) . snd) contents
    in Grid w h a (HM.fromList filtered)
 
@@ -45,20 +44,21 @@ evolve f grid@(Grid w h a _) =
 data Life = Dead | Alive deriving (Eq, Show)
 
 instance Semigroup Life where
-  Dead <> _ = Dead
-  Alive <> x = x
+  Dead <> x = x
+  Alive <> _ = Alive
 
 instance Monoid Life where
   mempty = Alive
 
 -- A single step of evolution in conway's game of life
 conway :: Grid Life -> Grid Life
-conway = evolve (\nbrs a -> go a (length nbrs))
+conway = evolve (\nbrs a -> go a (length (filter (== Alive) nbrs)))
   where
     go :: Life -> Int -> Life
     go Alive 2 = Alive
     go Alive 3 = Alive
     go Dead 3 = Alive
+    go Dead _ = Dead
     go _ _ = Dead
 
 -- An empty starting grid for the game of life

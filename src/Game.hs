@@ -17,13 +17,14 @@ startGame = do
   runGame s (loop ts)
 
 -- An action that the user can take
-data Action = EscapeAction | PauseAction | NoAction | HoverAction Pos | ClickAction Pos
+data Action = EscapeAction | PauseAction | NoAction | StepAction | HoverAction Pos | ClickAction Pos
 
 eventToAction :: Event -> Action
 eventToAction event = case eventPayload event of
   KeyboardEvent k | keyboardEventKeyMotion k == Pressed -> case keysymKeycode (keyboardEventKeysym k) of
     KeycodeEscape -> EscapeAction
     KeycodeSpace -> PauseAction
+    KeycodeS -> StepAction
     _ -> NoAction
   MouseMotionEvent e ->
     let (P (V2 x y)) = mouseMotionEventPos e
@@ -38,6 +39,9 @@ data GameState = GameState {paused :: Bool, shouldQuit :: Bool, rdr :: Renderer,
 
 cellFactor :: Num a => a
 cellFactor = 20
+
+limitTime :: Num a => a
+limitTime = 250
 
 initialGameState :: Renderer -> GameState
 initialGameState rdr' = GameState True False rdr' 0 (0, 0) (emptyLife (800 `div` cellFactor) (600 `div` cellFactor))
@@ -98,11 +102,19 @@ handleAction a = case a of
   PauseAction -> modify (\s -> s {paused = not (paused s)})
   HoverAction pos -> modify (\s -> s {hover = pos})
   ClickAction pos -> modify (\s -> s {life = life s <> singleLife pos})
+  StepAction -> step
   NoAction -> return ()
 
 handleTime :: GameM ()
 handleTime = do
   tm <- gets timeBuf
-  if tm > 500
-    then modify (\s -> s {timeBuf = 0, life = conway (life s)})
+  if tm > limitTime
+    then do
+      modify (\s -> s {timeBuf = 0})
+      step
     else return ()
+  where
+
+step :: GameM ()
+step =
+  modify (\s -> s {life = conway (life s)})
