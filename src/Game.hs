@@ -7,6 +7,17 @@ import Life
 import SDL
 import Prelude
 
+-- The number of pixels per cell
+cellFactor :: Num a => a
+cellFactor = 20
+
+-- This is the number of milliseconds between state transitions, to begin with.
+initialLimitTime :: Int
+initialLimitTime = 250
+
+-- Start running the game
+--
+-- This will do the necessary things for initializing SDL, creating a window, etc. etc.
 startGame :: IO ()
 startGame = do
   initializeAll
@@ -17,7 +28,23 @@ startGame = do
   runGame s (loop ts)
 
 -- An action that the user can take
-data Action = EscapeAction | PauseAction | NoAction | AccelAction | DecelAction | StepAction | HoverAction Pos | ClickAction Pos
+data Action
+  -- The user wants to exit the game
+  = EscapeAction
+  -- The user wants to pause the game
+  | PauseAction
+  -- The user wants to increase the speed of the game
+  | AccelAction
+  -- The user wants to decrease the speed of the game
+  | DecelAction
+  -- The user wants to advance the game forward by a single "turn"
+  | StepAction
+  -- The user is hovering over a specific cell
+  | HoverAction Pos
+  -- The user has clicked on a cell
+  | ClickAction Pos
+  -- This is the action we return when we have an event we don't recognize
+  | NoAction
 
 eventToAction :: Event -> Action
 eventToAction event = case eventPayload event of
@@ -47,14 +74,15 @@ data GameState = GameState
     limitTime :: Int
   }
 
-cellFactor :: Num a => a
-cellFactor = 20
-
+-- The starting state of the game
 initialGameState :: Renderer -> GameState
-initialGameState rdr' = GameState True False rdr' 0 (0, 0) (emptyLife (800 `div` cellFactor) (600 `div` cellFactor)) 250
+initialGameState rdr' = GameState True False rdr' 0 (0, 0) (emptyLife (800 `div` cellFactor) (600 `div` cellFactor)) initialLimitTime
 
-newtype GameM a = GameM (ReaderT (IORef GameState) IO a) deriving (Functor, Applicative, Monad, MonadReader (IORef GameState), MonadIO)
+-- The context where game logic happens
+newtype GameM a = GameM (ReaderT (IORef GameState) IO a)
+  deriving (Functor, Applicative, Monad, MonadReader (IORef GameState), MonadIO)
 
+-- Run the game, starting from a certain state
 runGame :: GameState -> GameM a -> IO a
 runGame s (GameM m) = do
   ref <- newIORef s
@@ -68,6 +96,7 @@ instance MonadState GameState GameM where
     ref <- ask
     writeIORef ref s
 
+-- This is the main game loop, taking the millisecond ticks as an arguments
 loop :: Word32 -> GameM ()
 loop ts = do
   events <- pollEvents
@@ -85,17 +114,20 @@ loop ts = do
   present rdr'
   unlessM (gets shouldQuit) (loop newTs)
 
+-- Create a rectangle from a position
 rectFromPos :: Num a => Pos -> Rectangle a
 rectFromPos (x, y) =
   let p = P (V2 (fromIntegral (x * cellFactor)) (fromIntegral (y * cellFactor)))
    in Rectangle p (V2 cellFactor cellFactor)
 
+-- Draw an outline, given a color, and a position
 drawSquareOutline :: V4 Word8 -> Pos -> GameM ()
 drawSquareOutline color pos = do
   rdr' <- gets rdr
   rendererDrawColor rdr' $= color
   drawRect rdr' (Just (rectFromPos pos))
 
+-- Draw all of the live cells in a grid for the game of life
 drawLife :: V4 Word8 -> Grid Life -> GameM ()
 drawLife color grid = do
   let poss = positions grid |> filter ((== Alive) . snd) |> map fst
@@ -103,6 +135,7 @@ drawLife color grid = do
   rendererDrawColor rdr' $= color
   forM_ poss (\p -> fillRect rdr' (Just (rectFromPos p)))
 
+-- Handle one of the fundamanetal game actions
 handleAction :: Action -> GameM ()
 handleAction a = case a of
   EscapeAction -> modify (\s -> s {shouldQuit = True})
@@ -114,6 +147,9 @@ handleAction a = case a of
   AccelAction -> modify (\s -> s {limitTime = max 10 ((limitTime s) * 2 `div` 3)})
   NoAction -> return ()
 
+-- Handle the time progression of the game
+--
+-- This will advance the game of life using conway's rules whenever the limiting time is set
 handleTime :: GameM ()
 handleTime = do
   tm <- gets timeBuf
@@ -123,8 +159,8 @@ handleTime = do
       modify (\s -> s {timeBuf = 0})
       step
     else return ()
-  where
 
+-- Advance the game of life by a single step
 step :: GameM ()
 step =
   modify (\s -> s {life = conway (life s)})
