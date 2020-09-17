@@ -1,4 +1,4 @@
-module Life (Pos, Grid, positions, conway, emptyLife, singleLife) where
+module Life (Pos, Grid, Life(..), positions, conway, emptyLife, singleLife) where
 
 import qualified Data.HashMap.Strict as HM
 import Prelude
@@ -10,7 +10,7 @@ type Pos = (Int, Int)
 --
 -- We have the width and height for a grid, a default value,
 -- followed by a hashmap mapping actual positionss to values
-data Grid a = Grid Int Int a (HM.HashMap Pos a)
+data Grid a = Grid Int Int a (HM.HashMap Pos a) deriving (Show)
 
 instance Semigroup a => Semigroup (Grid a) where
   (Grid w1 h1 dead1 mp1) <> (Grid w2 h2 dead2 mp2) = Grid (max w1 w2) (max h1 h2) (dead1 <> dead2) (mp1 <> mp2)
@@ -42,7 +42,7 @@ evolve f grid@(Grid w h a _) =
    in Grid w h a (HM.fromList filtered)
 
 -- Represents the state of the grid in Conway's game of life
-data Life = Dead | Alive deriving (Eq)
+data Life = Dead | Alive deriving (Eq, Show)
 
 instance Semigroup Life where
   Dead <> _ = Dead
