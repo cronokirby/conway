@@ -17,7 +17,7 @@ startGame = do
   runGame s (loop ts)
 
 -- An action that the user can take
-data Action = EscapeAction | PauseAction | NoAction | StepAction | HoverAction Pos | ClickAction Pos
+data Action = EscapeAction | PauseAction | NoAction | AccelAction | DecelAction | StepAction | HoverAction Pos | ClickAction Pos
 
 eventToAction :: Event -> Action
 eventToAction event = case eventPayload event of
@@ -25,6 +25,8 @@ eventToAction event = case eventPayload event of
     KeycodeEscape -> EscapeAction
     KeycodeSpace -> PauseAction
     KeycodeS -> StepAction
+    KeycodeA -> AccelAction
+    KeycodeD -> DecelAction
     _ -> NoAction
   MouseMotionEvent e ->
     let (P (V2 x y)) = mouseMotionEventPos e
@@ -35,16 +37,21 @@ eventToAction event = case eventPayload event of
        in ClickAction (fromIntegral (x `div` 20), fromIntegral (y `div` 20))
   _ -> NoAction
 
-data GameState = GameState {paused :: Bool, shouldQuit :: Bool, rdr :: Renderer, timeBuf :: Word32, hover :: Pos, life :: Grid Life}
+data GameState = GameState
+  { paused :: Bool,
+    shouldQuit :: Bool,
+    rdr :: Renderer,
+    timeBuf :: Word32,
+    hover :: Pos,
+    life :: Grid Life,
+    limitTime :: Int
+  }
 
 cellFactor :: Num a => a
 cellFactor = 20
 
-limitTime :: Num a => a
-limitTime = 250
-
 initialGameState :: Renderer -> GameState
-initialGameState rdr' = GameState True False rdr' 0 (0, 0) (emptyLife (800 `div` cellFactor) (600 `div` cellFactor))
+initialGameState rdr' = GameState True False rdr' 0 (0, 0) (emptyLife (800 `div` cellFactor) (600 `div` cellFactor)) 250
 
 newtype GameM a = GameM (ReaderT (IORef GameState) IO a) deriving (Functor, Applicative, Monad, MonadReader (IORef GameState), MonadIO)
 
@@ -103,12 +110,15 @@ handleAction a = case a of
   HoverAction pos -> modify (\s -> s {hover = pos})
   ClickAction pos -> modify (\s -> s {life = life s <> singleLife pos})
   StepAction -> step
+  DecelAction -> modify (\s -> s {limitTime = (limitTime s) * 3 `div` 2})
+  AccelAction -> modify (\s -> s {limitTime = max 10 ((limitTime s) * 2 `div` 3)})
   NoAction -> return ()
 
 handleTime :: GameM ()
 handleTime = do
   tm <- gets timeBuf
-  if tm > limitTime
+  limitTime' <- gets limitTime
+  if tm > (fromIntegral limitTime')
     then do
       modify (\s -> s {timeBuf = 0})
       step
