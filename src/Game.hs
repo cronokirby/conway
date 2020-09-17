@@ -12,7 +12,8 @@ startGame = do
   window <- createWindow "Conway" defaultWindow
   renderer <- createRenderer window (-1) defaultRenderer
   let s = initialGameState renderer
-  runGame s loop
+  ts <- ticks
+  runGame s (loop ts)
 
 -- An action that the user can take
 data Action = EscapeAction | PauseAction | NoAction
@@ -25,10 +26,10 @@ eventToAction event = case eventPayload event of
     _ -> NoAction
   _ -> NoAction
 
-data GameState = GameState {paused :: Bool, shouldQuit :: Bool, rdr :: Renderer, count :: Word8}
+data GameState = GameState {paused :: Bool, shouldQuit :: Bool, rdr :: Renderer, timeBuf :: Word32, flp :: Bool}
 
 initialGameState :: Renderer -> GameState
-initialGameState rdr' = GameState True False rdr' 0
+initialGameState rdr' = GameState True False rdr' 0 False
 
 newtype GameM a = GameM (ReaderT (IORef GameState) IO a) deriving (Functor, Applicative, Monad, MonadReader (IORef GameState), MonadIO)
 
@@ -45,20 +46,29 @@ instance MonadState GameState GameM where
     ref <- ask
     writeIORef ref s
 
-loop :: GameM ()
-loop = do
+loop :: Word32 -> GameM ()
+loop ts = do
   events <- pollEvents
   forM_ events (handleAction . eventToAction)
-  unlessM (gets paused) (modify (\s -> s {count = (count s) + 1}))
-  count' <- gets count
   rdr' <- gets rdr
-  rendererDrawColor rdr' $= V4 (255 - count') count' 255 255
+  newTs <- SDL.ticks
+  unlessM (gets paused) (modify (\s -> s {timeBuf = (timeBuf s) + (newTs - ts)}))
+  handleTime
+  color <- ifM (gets flp) (return (V4 0 0 255 255)) (return (V4 0 255 0 255))
+  rendererDrawColor rdr' $= color
   clear rdr'
   present rdr'
-  unlessM (gets shouldQuit) loop
+  unlessM (gets shouldQuit) (loop newTs)
 
 handleAction :: Action -> GameM ()
 handleAction a = case a of
   EscapeAction -> modify (\s -> s {shouldQuit = True})
   PauseAction -> modify (\s -> s {paused = not (paused s)})
   NoAction -> return ()
+
+handleTime :: GameM ()
+handleTime = do
+  tm <- gets timeBuf
+  if tm > 500
+    then modify (\s -> s {timeBuf = 0, flp = not (flp s)})
+    else return ()
